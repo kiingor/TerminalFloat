@@ -142,11 +142,14 @@ configurações:
 No Windows os dois ficam em `D:\Obsidian\<nome>`. No macOS o app procura cada
 cofre pelo nome, nesta ordem, e usa a primeira pasta que existir:
 
-1. `~/Obsidian/<nome>`
-2. `~/Documents/Obsidian/<nome>`
-3. `~/Documents/<nome>`
-4. `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/<nome>` (Obsidian via iCloud)
-5. `~/<nome>`
+1. Qualquer cofre já aberto no Obsidian cuja pasta se chame `<nome>` — lido de
+   `~/Library/Application Support/obsidian/obsidian.json`, onde o Obsidian
+   registra o caminho de todos os cofres
+2. `~/Obsidian/<nome>`
+3. `~/Documents/Obsidian/<nome>`
+4. `~/Documents/<nome>`
+5. `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/<nome>` (Obsidian via iCloud)
+6. `~/<nome>`
 
 Se o cofre estiver em outro lugar, a barra de cofres mostra "Pasta não
 encontrada" e basta corrigir o caminho nas configurações — `~/` funciona.

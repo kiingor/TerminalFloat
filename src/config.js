@@ -5,18 +5,40 @@ const path = require('path');
 const { app, safeStorage } = require('electron');
 
 /**
+ * Cofres registrados no próprio Obsidian. O app grava em `obsidian.json` o
+ * caminho de todo cofre já aberto, então é a fonte mais confiável de onde eles
+ * moram — inclusive quando ficam fora das pastas "óbvias". Só é lido no
+ * macOS/Linux; no Windows o caminho padrão é fixo e conhecido.
+ */
+function obsidianRegisteredVaults() {
+  const registry = path.join(os.homedir(), 'Library', 'Application Support', 'obsidian', 'obsidian.json');
+  try {
+    const vaults = JSON.parse(fs.readFileSync(registry, 'utf8')).vaults || {};
+    return Object.values(vaults)
+      .map((v) => v && v.path)
+      .filter((p) => typeof p === 'string' && p);
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Onde os cofres costumam morar em cada sistema. No Windows é um caminho fixo
- * conhecido; no macOS/Linux o app procura o cofre pelo nome nas pastas mais
- * comuns (inclusive a do Obsidian via iCloud Drive) e usa a primeira que
- * existir. Nada disso é definitivo: a tela de configurações permite trocar o
- * caminho, e o app avisa na barra de cofres quando a pasta não é encontrada.
+ * conhecido; no macOS/Linux o app procura o cofre pelo nome primeiro entre os
+ * cofres registrados no Obsidian e depois nas pastas mais comuns (inclusive a
+ * do Obsidian via iCloud Drive), usando a primeira que existir. Nada disso é
+ * definitivo: a tela de configurações permite trocar o caminho, e o app avisa
+ * na barra de cofres quando a pasta não é encontrada.
  */
 function defaultVaultRoot(name) {
   if (process.platform === 'win32') return path.join('D:\\Obsidian', name);
   const home = os.homedir();
+  const fallback = path.join(home, 'Documents', 'Obsidian', name);
+  const registered = obsidianRegisteredVaults().filter((p) => path.basename(p) === name);
   const candidates = [
+    ...registered,
     path.join(home, 'Obsidian', name),
-    path.join(home, 'Documents', 'Obsidian', name),
+    fallback,
     path.join(home, 'Documents', name),
     path.join(home, 'Library', 'Mobile Documents', 'iCloud~md~obsidian', 'Documents', name),
     path.join(home, name),
@@ -28,7 +50,7 @@ function defaultVaultRoot(name) {
       return false;
     }
   });
-  return found || candidates[1];
+  return found || fallback;
 }
 
 const DEFAULTS = {
