@@ -1,0 +1,768 @@
+:root {
+  /* Janela transparente do Electron não desfoca o desktop atrás (não há
+     backdrop para filtrar), então a opacidade precisa segurar a leitura. */
+  --bg: rgba(15, 16, 22, 0.975);
+  --bg-solid: #0f1016;
+  --panel: rgba(255, 255, 255, 0.045);
+  --line: rgba(255, 255, 255, 0.09);
+  --line-soft: rgba(255, 255, 255, 0.05);
+  --text: #e7e9f0;
+  --muted: #8d93a6;
+  --faint: #6a7085;
+  --accent: #5eead4;
+  --accent-dim: rgba(94, 234, 212, 0.14);
+  --danger: #f87171;
+  --warn: #fbbf24;
+  --radius: 16px;
+  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --mono: "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* As regras abaixo definem display para #bubble e #settings; sem isto o
+   [hidden] da folha do navegador seria sobreposto e os painéis ficariam
+   sempre visíveis. */
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  font-family: var(--font);
+  font-size: 13.5px;
+  color: var(--text);
+  user-select: none;
+  cursor: default;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ------------------------------------------------------------------ bolha */
+
+#bubble {
+  height: 100%;
+  display: block;
+  /* Arraste é feito à mão em app.js: região de drag do Chromium engole o
+     clique, e aqui a bolha inteira precisa arrastar E abrir. */
+  -webkit-app-region: no-drag;
+}
+
+/* Sem círculo nem sombra: a bolha é o próprio pet, recortado pelo alpha do
+   sprite. Isso também elimina de vez o retângulo de sombra — não há mais nada
+   que possa vazar dos limites da janela. */
+#bubble-btn {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: none;
+  border: none;
+  cursor: grab;
+}
+
+#bubble-btn:active {
+  cursor: grabbing;
+}
+
+.pet {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background-image: url("pet/spritesheet.png");
+  background-repeat: no-repeat;
+  /* background-size e background-position são calculados em app.js a partir do
+     pet.json, para trocar de pet não exigir mexer no CSS. */
+  /* Contorno que segura a figura tanto em fundo claro quanto escuro. */
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5)) drop-shadow(0 0 1px rgba(255, 255, 255, 0.35));
+  transition: transform 0.15s ease;
+}
+
+#bubble-btn:hover .pet {
+  transform: scale(1.06);
+}
+
+#bubble-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  box-shadow: 0 0 0 2px var(--bg-solid);
+}
+
+/* ------------------------------------------------------------------- app */
+
+#app {
+  position: relative; /* âncora da alça de redimensionamento */
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  backdrop-filter: blur(22px) saturate(1.3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
+}
+
+body.collapsed #app { display: none; }
+body.collapsed #settings { display: none; }
+
+#titlebar {
+  -webkit-app-region: drag;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 8px 7px 10px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+/* Nome e função empilhados: cabe o pet inteiro ao lado sem espremer nada, e
+   sobra largura para os botões mesmo na janela no tamanho mínimo. */
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  gap: 1px;
+}
+
+.role {
+  font-size: 10.5px;
+  color: var(--muted);
+  letter-spacing: 0.15px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* O mesmo pet da bolha, em miniatura no cabeçalho. Herda de .pet a folha de
+   sprites; app.js dá a ele o mesmo estado da bolha, então ele medita junto
+   enquanto o agente trabalha. */
+/* Sem margem negativa: o cabeçalho cresce para caber a figura. Puxá-la para
+   fora do respiro fazia o topo e a base serem cortados pelo overflow da
+   janela — era isso que deixava o cabeçalho confuso de ler. */
+.mark {
+  width: 34px;
+  height: 37px;
+  flex: none;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.55));
+}
+
+.name {
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  /* No tamanho mínimo da janela o nome é a parte que pode ceder — a badge do
+     provider e os botões não. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.badge {
+  flex: none;
+}
+
+.badge {
+  font-size: 10.5px;
+  color: var(--accent);
+  background: var(--accent-dim);
+  border-radius: 999px;
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+
+.actions {
+  -webkit-app-region: no-drag;
+  display: flex;
+  gap: 2px;
+}
+
+.icon {
+  width: 26px;
+  height: 26px;
+  padding: 6px;
+  border-radius: 7px;
+  color: var(--muted);
+  transition: background 0.12s, color 0.12s;
+}
+
+.icon:hover {
+  background: var(--panel);
+  color: var(--text);
+}
+
+/* --------------------------------------------------------------- cofres */
+
+#vaultbar {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding: 6px 13px;
+  font-size: 10.5px;
+  color: var(--faint);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+#vaultbar:empty { display: none; }
+
+.vault-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.vault-chip .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.vault-chip.sensitive .dot { background: var(--warn); }
+.vault-chip.broken { color: var(--danger); }
+.vault-chip.broken .dot { background: var(--danger); }
+
+/* ------------------------------------------------------------- mensagens */
+
+#messages {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 14px 13px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  user-select: text;
+  cursor: auto;
+}
+
+#messages::-webkit-scrollbar { width: 8px; }
+#messages::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+#messages::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); background-clip: content-box; }
+
+.msg { display: flex; flex-direction: column; gap: 7px; }
+
+.msg.user {
+  align-self: flex-end;
+  max-width: 88%;
+  background: var(--accent-dim);
+  border: 1px solid rgba(94, 234, 212, 0.2);
+  border-radius: 13px 13px 4px 13px;
+  padding: 8px 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.msg.assistant { align-self: stretch; }
+
+.seg-text {
+  line-height: 1.58;
+  word-break: break-word;
+}
+
+.seg-text > *:first-child { margin-top: 0; }
+.seg-text > *:last-child { margin-bottom: 0; }
+.seg-text p { margin: 0 0 8px; }
+.seg-text h1, .seg-text h2, .seg-text h3 {
+  font-size: 1.02em;
+  font-weight: 650;
+  margin: 12px 0 5px;
+  color: #f3f5fa;
+}
+.seg-text ul, .seg-text ol { margin: 0 0 8px; padding-left: 19px; }
+.seg-text li { margin: 2px 0; }
+.seg-text a { color: var(--accent); text-decoration: none; }
+.seg-text a:hover { text-decoration: underline; }
+.seg-text code {
+  font-family: var(--mono);
+  font-size: 0.88em;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+/* A janela é estreita: rolagem horizontal em token longo é impossível de ler.
+   Quebra a linha e mantém tudo visível de uma vez. */
+.seg-text pre {
+  position: relative;
+  background: rgba(0, 0, 0, 0.38);
+  border: 1px solid var(--line-soft);
+  border-radius: 9px;
+  padding: 9px 11px 9px;
+  margin: 0 0 8px;
+  overflow: visible;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.seg-text pre code {
+  background: none;
+  padding: 0;
+  font-size: 0.85em;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.seg-text pre:has(.copy-btn) { padding-top: 26px; }
+
+.copy-btn {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+  letter-spacing: 0.2px;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.copy-btn:hover { background: var(--accent-dim); color: var(--accent); border-color: rgba(94, 234, 212, 0.35); }
+.copy-btn.done { background: var(--accent); color: #06231f; border-color: transparent; }
+
+/* Código inline longo (token, senha, hash) copia com um clique. */
+.seg-text code.copyable {
+  cursor: pointer;
+  border-bottom: 1px dashed rgba(94, 234, 212, 0.45);
+  overflow-wrap: anywhere;
+}
+.seg-text code.copyable:hover { background: var(--accent-dim); color: var(--accent); }
+.seg-text code.copyable.done { background: var(--accent); color: #06231f; }
+.seg-text blockquote {
+  border-left: 2px solid var(--line);
+  padding-left: 9px;
+  color: var(--muted);
+  margin: 0 0 8px;
+}
+.seg-text hr { border: none; border-top: 1px solid var(--line-soft); margin: 10px 0; }
+.wikilink { color: var(--accent); cursor: pointer; }
+.wikilink:hover { text-decoration: underline; }
+
+/* raciocínio */
+.seg-think {
+  font-size: 12px;
+  color: var(--faint);
+  border-left: 2px solid var(--line);
+  padding-left: 9px;
+}
+
+.seg-think summary {
+  cursor: pointer;
+  list-style: none;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.2px;
+}
+.seg-think summary::-webkit-details-marker { display: none; }
+.seg-think summary::before { content: "▸ "; }
+.seg-think[open] summary::before { content: "▾ "; }
+.seg-think .body {
+  margin-top: 5px;
+  white-space: pre-wrap;
+  line-height: 1.5;
+  max-height: 210px;
+  overflow-y: auto;
+}
+
+/* ferramentas */
+.tool {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  font-size: 11.5px;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  padding: 5px 9px;
+  align-self: flex-start;
+  max-width: 100%;
+}
+
+.tool .spin {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--accent);
+  border-top-color: transparent;
+  animation: spin 0.7s linear infinite;
+  flex: none;
+  align-self: center;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.tool.ok .spin { animation: none; border-color: var(--accent); background: var(--accent); }
+.tool.fail { color: var(--danger); border-color: rgba(248, 113, 113, 0.3); }
+.tool.fail .spin { animation: none; border-color: var(--danger); background: var(--danger); }
+.tool .arg {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* confirmação de escrita */
+.confirm {
+  border: 1px solid rgba(251, 191, 36, 0.32);
+  background: rgba(251, 191, 36, 0.07);
+  border-radius: 11px;
+  padding: 10px 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.confirm .head {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--warn);
+}
+
+.confirm .path {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text);
+  word-break: break-all;
+}
+
+.confirm .warn-secret {
+  font-size: 11px;
+  color: var(--warn);
+}
+
+.confirm pre {
+  max-height: 160px;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 1.5;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 7px;
+  padding: 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.confirm .row { display: flex; gap: 7px; }
+
+.confirm button {
+  flex: 1;
+  padding: 6px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 550;
+  border: 1px solid var(--line);
+  transition: background 0.12s;
+}
+
+.confirm .approve { background: var(--accent); color: #06231f; border-color: transparent; }
+.confirm .approve:hover { filter: brightness(1.08); }
+.confirm .deny:hover { background: var(--panel); }
+.confirm.resolved .row { display: none; }
+.confirm .verdict { font-size: 11.5px; color: var(--muted); }
+
+.error {
+  border: 1px solid rgba(248, 113, 113, 0.32);
+  background: rgba(248, 113, 113, 0.07);
+  color: #fca5a5;
+  border-radius: 10px;
+  padding: 8px 11px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.empty {
+  margin: auto;
+  text-align: center;
+  color: var(--faint);
+  font-size: 12px;
+  line-height: 1.7;
+  padding: 0 12px;
+}
+.empty strong { color: var(--muted); font-weight: 550; }
+
+/* -------------------------------------------------------------- composer */
+
+#composer {
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+  gap: 7px;
+  padding: 9px 11px 11px;
+  border-top: 1px solid var(--line-soft);
+}
+
+#input {
+  flex: 1;
+  resize: none;
+  max-height: 132px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.28);
+  color: var(--text);
+  font: inherit;
+  line-height: 1.45;
+  outline: none;
+  user-select: text;
+  cursor: auto;
+}
+
+#input:focus { border-color: rgba(94, 234, 212, 0.45); }
+#input::placeholder { color: var(--faint); }
+
+#btn-send {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 8px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: #06231f;
+  transition: filter 0.12s, opacity 0.12s;
+}
+
+#btn-send:hover { filter: brightness(1.1); }
+#btn-send:disabled { opacity: 0.35; cursor: default; }
+#btn-send .ico-stop { display: none; }
+body.busy #btn-send .ico-send { display: none; }
+body.busy #btn-send .ico-stop { display: block; fill: currentColor; stroke: none; }
+body.busy #btn-send { background: var(--danger); color: #2b0b0b; }
+
+#resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  -webkit-app-region: no-drag;
+}
+
+#resize::after {
+  content: "";
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid rgba(255, 255, 255, 0.22);
+  border-bottom: 1.5px solid rgba(255, 255, 255, 0.22);
+  border-radius: 0 0 2px 0;
+}
+
+/* ---------------------------------------------------------- configurações */
+
+#settings {
+  position: absolute;
+  inset: 0;
+  background: var(--bg);
+  backdrop-filter: blur(22px) saturate(1.3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+}
+
+#settings > header {
+  -webkit-app-region: drag;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 8px 10px 13px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+#settings h2 { font-size: 13.5px; font-weight: 600; }
+#settings > header .icon { -webkit-app-region: no-drag; }
+
+.settings-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 17px;
+}
+
+.settings-body::-webkit-scrollbar { width: 8px; }
+.settings-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.group { display: flex; flex-direction: column; gap: 8px; }
+
+.group-label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: var(--faint);
+  font-weight: 600;
+}
+
+.seg {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+
+.seg button {
+  flex: 1;
+  padding: 5px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  transition: background 0.12s, color 0.12s;
+}
+
+.seg button.on { background: var(--accent-dim); color: var(--accent); }
+
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field > span { font-size: 11px; color: var(--muted); }
+
+.field input,
+.field select {
+  padding: 6px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.28);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+  user-select: text;
+}
+
+.field input:focus,
+.field select:focus { border-color: rgba(94, 234, 212, 0.45); }
+
+.key-state { font-size: 10.5px; color: var(--faint); line-height: 1.5; }
+.key-state.set { color: var(--accent); }
+.key-state.plain { color: var(--warn); }
+
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.check input { margin-top: 2px; accent-color: #5eead4; flex: none; }
+
+.hint { font-size: 11px; color: var(--faint); }
+
+kbd {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 1px 5px;
+}
+
+.vault-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: 9px;
+  background: var(--panel);
+}
+
+.vault-row .top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.vault-row .title { font-size: 12px; font-weight: 550; }
+.vault-row .meta { font-size: 10.5px; color: var(--faint); font-family: var(--mono); word-break: break-all; }
+.vault-row .tag {
+  font-size: 9.5px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(251, 191, 36, 0.14);
+  color: var(--warn);
+}
+.vault-row .toggles { display: flex; gap: 12px; margin-top: 4px; }
+.vault-row .toggles label { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); cursor: pointer; }
+.vault-row.broken .meta { color: var(--danger); }
+
+.ghost {
+  padding: 7px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--muted);
+  transition: background 0.12s, color 0.12s;
+}
+
+.ghost:hover { background: var(--panel); color: var(--text); }
+.ghost.danger:hover { color: var(--danger); border-color: rgba(248, 113, 113, 0.35); }

@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self';"
+    />
+    <title>LouroChan</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- estado minimizado -->
+    <div id="bubble" hidden>
+      <button id="bubble-btn" title="Abrir o chat">
+        <span id="pet" class="pet" role="img" aria-label="Louro Chan"></span>
+        <span id="bubble-badge" hidden></span>
+      </button>
+    </div>
+
+    <!-- estado expandido -->
+    <div id="app">
+      <header id="titlebar">
+        <div class="brand" id="brand">
+          <span id="pet-mark" class="pet mark" role="img" aria-label="Louro Chan"></span>
+          <span class="brand-text">
+            <span class="name">LouroChan</span>
+            <span id="provider-badge" class="role">Assistente Pessoal</span>
+          </span>
+        </div>
+        <div class="actions">
+          <button id="btn-new" class="icon" title="Nova conversa" aria-label="Nova conversa">
+            <svg viewBox="0 0 16 16"><path d="M8 3.5v9M3.5 8h9" /></svg>
+          </button>
+          <button id="btn-settings" class="icon" title="Configurações" aria-label="Configurações">
+            <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.3" /><path d="M8 1.6v1.8M8 12.6v1.8M14.4 8h-1.8M3.4 8H1.6M12.5 3.5l-1.3 1.3M4.8 11.2l-1.3 1.3M12.5 12.5l-1.3-1.3M4.8 4.8L3.5 3.5" /></svg>
+          </button>
+          <button id="btn-collapse" class="icon" title="Minimizar" aria-label="Minimizar">
+            <svg viewBox="0 0 16 16"><path d="M3.5 8h9" /></svg>
+          </button>
+        </div>
+      </header>
+
+      <div id="vaultbar"></div>
+
+      <main id="messages" aria-live="polite"></main>
+
+      <footer id="composer">
+        <textarea
+          id="input"
+          rows="1"
+          placeholder="Pergunte ao seu cofre…"
+          autocomplete="off"
+          spellcheck="false"
+        ></textarea>
+        <button id="btn-send" title="Enviar (Enter)" aria-label="Enviar">
+          <svg viewBox="0 0 16 16" class="ico-send"><path d="M2.5 8h10M8.5 3.5L13 8l-4.5 4.5" /></svg>
+          <svg viewBox="0 0 16 16" class="ico-stop"><rect x="4.5" y="4.5" width="7" height="7" rx="1.5" /></svg>
+        </button>
+      </footer>
+
+      <div id="resize" title="Redimensionar"></div>
+    </div>
+
+    <!-- configurações -->
+    <section id="settings" hidden>
+      <header>
+        <h2>Configurações</h2>
+        <button id="settings-close" class="icon" aria-label="Fechar">
+          <svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" /></svg>
+        </button>
+      </header>
+
+      <div class="settings-body">
+        <div class="group">
+          <label class="group-label">Modelo</label>
+          <div class="seg" id="provider-switch">
+            <button data-provider="anthropic">Claude</button>
+            <button data-provider="openai">OpenAI</button>
+          </div>
+
+          <div class="provider-pane" data-pane="anthropic">
+            <label class="field">
+              <span>Modelo</span>
+              <input id="anthropic-model" type="text" spellcheck="false" />
+            </label>
+            <label class="field">
+              <span>Esforço</span>
+              <select id="anthropic-effort">
+                <option value="low">baixo — mais rápido</option>
+                <option value="medium">médio — equilibrado</option>
+                <option value="high">alto — mais cuidadoso</option>
+                <option value="xhigh">muito alto</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>ANTHROPIC_API_KEY</span>
+              <input id="anthropic-key" type="password" placeholder="sk-ant-…" spellcheck="false" />
+            </label>
+            <p class="key-state" id="anthropic-key-state"></p>
+          </div>
+
+          <div class="provider-pane" data-pane="openai" hidden>
+            <label class="field">
+              <span>Endpoint (vazio = api.openai.com)</span>
+              <input
+                id="openai-baseurl"
+                type="text"
+                placeholder="https://seu-gateway/v1"
+                spellcheck="false"
+              />
+            </label>
+            <label class="field">
+              <span>Modelo</span>
+              <input id="openai-model" type="text" spellcheck="false" />
+            </label>
+            <label class="field">
+              <span>Chave de API</span>
+              <input id="openai-key" type="password" placeholder="sk-…" spellcheck="false" />
+            </label>
+            <p class="key-state" id="openai-key-state"></p>
+          </div>
+        </div>
+
+        <div class="group">
+          <label class="group-label">Cofres</label>
+          <div id="vault-settings"></div>
+          <button id="btn-reindex" class="ghost">Reindexar agora</button>
+        </div>
+
+        <div class="group">
+          <label class="group-label">Comportamento</label>
+          <label class="check">
+            <input id="opt-confirm" type="checkbox" />
+            <span>Pedir confirmação antes de escrever no cofre</span>
+          </label>
+          <label class="check">
+            <input id="opt-thinking" type="checkbox" />
+            <span>Mostrar o raciocínio do modelo</span>
+          </label>
+          <p class="hint" id="hotkey-hint">Atalho global: <kbd id="hotkey-label"></kbd></p>
+        </div>
+
+        <div class="group">
+          <label class="group-label">Se a janela sumir</label>
+          <p class="hint" id="lost-hint">
+            Clique no ícone do LouroChan na bandeja (perto do relógio). Rodar
+            <kbd>npm start</kbd> de novo também traz a janela de volta.
+          </p>
+          <button id="btn-center" class="ghost">Trazer para o centro da tela</button>
+        </div>
+
+        <div class="group">
+          <button id="btn-quit" class="ghost danger">Sair do LouroChan</button>
+        </div>
+      </div>
+    </section>
+
+    <script src="markdown.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
