@@ -151,6 +151,9 @@ cofre pelo nome, nesta ordem, e usa a primeira pasta que existir:
 5. `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/<nome>` (Obsidian via iCloud)
 6. `~/<nome>`
 
+Para o Cofre de Acessos, `<nome>` também pode ser `Cofre`, que é como a pasta se
+chama no Mac (`~/Documents/Cofre`).
+
 Se o cofre estiver em outro lugar, a barra de cofres mostra "Pasta não
 encontrada" e basta corrigir o caminho nas configurações — `~/` funciona.
 

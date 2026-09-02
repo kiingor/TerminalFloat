@@ -26,22 +26,27 @@ function obsidianRegisteredVaults() {
  * Onde os cofres costumam morar em cada sistema. No Windows é um caminho fixo
  * conhecido; no macOS/Linux o app procura o cofre pelo nome primeiro entre os
  * cofres registrados no Obsidian e depois nas pastas mais comuns (inclusive a
- * do Obsidian via iCloud Drive), usando a primeira que existir. Nada disso é
- * definitivo: a tela de configurações permite trocar o caminho, e o app avisa
- * na barra de cofres quando a pasta não é encontrada.
+ * do Obsidian via iCloud Drive), usando a primeira que existir. `folderNames`
+ * são outros nomes que a pasta do cofre pode ter no disco (o Obsidian deixa o
+ * nome da pasta livre, e no Mac o Cofre de Acessos vive em "Cofre"). Nada
+ * disso é definitivo: a tela de configurações permite trocar o caminho, e o
+ * app avisa na barra de cofres quando a pasta não é encontrada.
  */
-function defaultVaultRoot(name) {
+function defaultVaultRoot(name, folderNames = []) {
   if (process.platform === 'win32') return path.join('D:\\Obsidian', name);
   const home = os.homedir();
   const fallback = path.join(home, 'Documents', 'Obsidian', name);
-  const registered = obsidianRegisteredVaults().filter((p) => path.basename(p) === name);
+  const names = [name, ...folderNames];
+  const registered = obsidianRegisteredVaults().filter((p) => names.includes(path.basename(p)));
   const candidates = [
     ...registered,
-    path.join(home, 'Obsidian', name),
-    fallback,
-    path.join(home, 'Documents', name),
-    path.join(home, 'Library', 'Mobile Documents', 'iCloud~md~obsidian', 'Documents', name),
-    path.join(home, name),
+    ...names.flatMap((n) => [
+      path.join(home, 'Obsidian', n),
+      path.join(home, 'Documents', 'Obsidian', n),
+      path.join(home, 'Documents', n),
+      path.join(home, 'Library', 'Mobile Documents', 'iCloud~md~obsidian', 'Documents', n),
+      path.join(home, n),
+    ]),
   ];
   const found = candidates.find((dir) => {
     try {
@@ -74,7 +79,7 @@ const DEFAULTS = {
     {
       id: 'acessos',
       name: 'Cofre de Acessos',
-      root: defaultVaultRoot('Cofre de Acessos'),
+      root: defaultVaultRoot('Cofre de Acessos', ['Cofre']),
       enabled: true,
       writable: true,
       sensitive: true,
